@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>terraform-gcp-vertex-ai-agents | Architecture</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0b0c0b;color:#f5f2eb;font-family:'Courier New',Courier,monospace;line-height:1.7;padding:0}
+a{color:#c8420a;text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1200px;margin:0 auto;padding:2rem}
+header{background:linear-gradient(135deg,#0b0c0b 0%,#1a1b1a 100%);border-bottom:2px solid #c8420a;padding:2rem 0}
+header .container{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+header h1{font-size:1.8rem;letter-spacing:1px}
+.badge{display:inline-flex;align-items:center;gap:.5rem;background:#1a1b1a;border:1px solid #333;border-radius:6px;padding:.4rem .8rem;font-size:.8rem}
+.badge img{height:18px}
+.section{margin:3rem 0}
+.section h2{font-size:1.4rem;color:#c8420a;border-bottom:1px solid #222;padding-bottom:.5rem;margin-bottom:1.5rem}
+.section h3{font-size:1.1rem;color:#f5f2eb;margin:1.5rem 0 .75rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.card{background:#131413;border:1px solid #222;border-radius:8px;padding:1.25rem;transition:border-color .2s}
+.card:hover{border-color:#c8420a}
+.card h3{margin:0 0 .5rem;font-size:1rem;color:#c8420a}
+.card p{font-size:.85rem;color:#aaa}
+.card .stat{font-size:1.6rem;font-weight:bold;color:#f5f2eb}
+.diagram{background:#131413;border:1px solid #222;border-radius:8px;padding:2rem;overflow-x:auto}
+.diagram .row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.5rem;margin:.75rem 0}
+.diagram .box{background:#1a1b1a;border:1px solid #c8420a;border-radius:6px;padding:.75rem 1.25rem;text-align:center;font-size:.8rem;min-width:120px}
+.diagram .box.highlight{background:#c8420a;color:#fff;border-color:#c8420a}
+.diagram .arrow{color:#c8420a;font-size:1.2rem}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:1rem 0}
+table th{text-align:left;padding:.6rem;background:#1a1b1a;color:#c8420a;border-bottom:2px solid #c8420a}
+table td{padding:.6rem;border-bottom:1px solid #1a1b1a}
+table tr:hover td{background:#131413}
+.checklist{list-style:none;padding:0}
+.checklist li{padding:.4rem 0;padding-left:1.5rem;position:relative;font-size:.9rem}
+.checklist li::before{content:"[x]";position:absolute;left:0;color:#c8420a;font-weight:bold}
+code{background:#1a1b1a;padding:.15rem .4rem;border-radius:3px;font-size:.85rem;color:#c8420a}
+pre{background:#131413;border:1px solid #222;border-radius:8px;padding:1.25rem;overflow-x:auto;font-size:.82rem;line-height:1.6}
+footer{border-top:2px solid #c8420a;margin-top:4rem;padding:2rem 0;text-align:center;font-size:.8rem;color:#555}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:768px){.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<div class="container">
+<div>
+<h1>terraform-gcp-vertex-ai-agents</h1>
+<p style="color:#aaa;font-size:.9rem;margin-top:.25rem">Conversational AI with Dialogflow CX and Vertex AI</p>
+</div>
+<div style="display:flex;gap:.75rem;align-items:center">
+<span class="badge"><img src="https://www.gstatic.com/devrel-devsite/prod/v0e0f589edd85502a40d78d7d0f2f25834f5f2f981ee4e9bc3ad30721d1c038af/cloud/images/favicons/onecloud/super_cloud.png" alt="GCP">Google Cloud Platform</span>
+<span class="badge">Terraform Module</span>
+</div>
+</div>
+</header>
+
+<div class="container">
+
+<div class="section">
+<h2>Executive Summary</h2>
+<p>This Terraform module deploys a complete Vertex AI Agent Builder stack using Dialogflow CX. It provisions conversational AI agents with multi-turn dialogue flows, pages with form parameters, intents with training phrases, custom entity types, and webhook fulfillment backends. The module auto-enables required GCP APIs (Dialogflow, Vertex AI, Cloud Run, Storage), creates a dedicated service account with 4 IAM roles, and optionally deploys a Cloud Run v2 webhook backend, Vertex AI Feature Store for agent memory, and a GCS bucket for training data and audio exports.</p>
+</div>
+
+<div class="section">
+<h2>Overview</h2>
+<div class="cards">
+<div class="card"><div class="stat">10</div><h3>Resource Types</h3><p>Agent, Flows, Pages, Intents, Entities, Webhooks, Cloud Run, Feature Store, GCS, IAM</p></div>
+<div class="card"><div class="stat">4</div><h3>APIs Enabled</h3><p>Dialogflow, Vertex AI, Cloud Run, Cloud Storage</p></div>
+<div class="card"><div class="stat">15</div><h3>Input Variables</h3><p>Agent config, flows, intents, webhook, features, storage</p></div>
+<div class="card"><div class="stat">8</div><h3>Outputs</h3><p>Agent ID/name, flow IDs, intent IDs, webhook/Cloud Run URLs</p></div>
+</div>
+</div>
+
+<div class="section">
+<h2>Architecture Diagram</h2>
+<div class="diagram">
+<div class="row">
+<div class="box">GCP API Services<br><small>Dialogflow, Vertex AI, Cloud Run, Storage</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box highlight">Dialogflow CX Agent<br><small>Multi-language, Spell Correction</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Conversation Flows<br><small>NLU Settings</small></div>
+<div class="arrow">--&gt;</div>
+<div class="box">Pages<br><small>Forms + Parameters</small></div>
+<div class="arrow">--&gt;</div>
+<div class="box">Intents<br><small>Training Phrases</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Entity Types<br><small>Synonyms</small></div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Webhooks<br><small>Fulfillment</small></div>
+<div class="arrow">--&gt;</div>
+<div class="box">Cloud Run v2<br><small>Backend Service</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Feature Store<br><small>Agent Memory</small></div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">GCS Bucket<br><small>Data + Audio</small></div>
+<div class="arrow">&lt;--&gt;</div>
+<div class="box">Service Account<br><small>4 IAM Roles</small></div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Component Breakdown</h2>
+<div class="grid-2">
+<div>
+<h3>Dialogflow CX Agent</h3>
+<p>Core agent resource with display name, default language code (BCP-47 validated), timezone, multi-language support, spell correction, speech adaptation, and audio export to GCS. Depends on Dialogflow API enablement.</p>
+
+<h3>Flows, Pages, Intents</h3>
+<p>Flows define conversation paths with NLU classification thresholds, transition routes (CEL conditions), and event handlers. Pages collect form parameters with entity types and prompts. Intents match user input via training phrases with optional parameters and entity types.</p>
+
+<h3>Entity Types</h3>
+<p>Custom entity types with synonym lists, extracted from intent configurations. Supports MAP and LIST entity kinds.</p>
+</div>
+<div>
+<h3>Webhook + Cloud Run Backend</h3>
+<p>External webhook URL for fulfillment, or auto-provisioned Cloud Run v2 service with 0-10 instance scaling, 512Mi memory, dedicated service account. Cloud Run IAM invoker binding for secure access.</p>
+
+<h3>Feature Store + Storage</h3>
+<p>Optional Vertex AI Feature Store for agent context/memory with fixed node online serving. GCS bucket for training data and audio exports with versioning, uniform bucket-level access, and 365-day lifecycle rule.</p>
+
+<h3>Service Account & IAM</h3>
+<p>Dedicated service account with 4 roles: Dialogflow Admin, Vertex AI User, Storage Object Viewer, Cloud Run Invoker. Additional Storage Object Admin on the data bucket.</p>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Data Flow</h2>
+<div class="diagram">
+<div class="row">
+<div class="box">User Input<br><small>Text / Voice</small></div>
+<div class="arrow">--&gt;</div>
+<div class="box highlight">Dialogflow CX Agent</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Intent Matching<br><small>NLU Engine</small></div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Flow Navigation</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Page Form Fill</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Webhook Fulfillment</div>
+</div>
+<div class="row"><div class="arrow">|</div></div>
+<div class="row">
+<div class="box">Cloud Run Backend</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Feature Store Lookup</div>
+<div class="arrow">--&gt;</div>
+<div class="box">Response Generated</div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Security Controls</h2>
+<table>
+<tr><th>Control</th><th>Implementation</th><th>Details</th></tr>
+<tr><td>Service Identity</td><td>Dedicated service account</td><td>4 least-privilege IAM roles</td></tr>
+<tr><td>Webhook Security</td><td>Cloud Run IAM invoker</td><td>Only agent SA can invoke</td></tr>
+<tr><td>API Enablement</td><td>Controlled API activation</td><td>No disable on destroy</td></tr>
+<tr><td>Storage Security</td><td>Uniform bucket-level access</td><td>Versioning + lifecycle rules</td></tr>
+<tr><td>Input Validation</td><td>Region, language code regex</td><td>BCP-47 and GCP region patterns</td></tr>
+<tr><td>Agent Name Validation</td><td>Length constraint 1-64 chars</td><td>Terraform validation block</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Industry Adaptation</h2>
+<div class="cards">
+<div class="card"><h3>Customer Support</h3><p>Multi-flow agents for order tracking, cancellations, FAQs. Entity types for order IDs, product names. Webhook for CRM integration.</p></div>
+<div class="card"><h3>Healthcare</h3><p>Symptom collection via form pages. Multi-language support for diverse patients. Feature Store for patient context.</p></div>
+<div class="card"><h3>Banking</h3><p>Account inquiry flows. Speech adaptation for financial terms. Cloud Run backend for secure API calls to core banking.</p></div>
+<div class="card"><h3>Retail</h3><p>Product recommendation intents. Training phrases for natural shopping queries. GCS for product catalog training data.</p></div>
+</div>
+</div>
+
+<div class="section">
+<h2>Production Readiness Checklist</h2>
+<ul class="checklist">
+<li>Enable spell correction for improved user input handling</li>
+<li>Configure event handlers for no-match and no-input defaults</li>
+<li>Deploy Cloud Run webhook backend for dynamic fulfillment</li>
+<li>Enable Feature Store for conversation context persistence</li>
+<li>Set up GCS bucket for training data and audio exports</li>
+<li>Add multiple language support for global audiences</li>
+<li>Define comprehensive training phrases for each intent</li>
+<li>Configure transition routes with appropriate conditions</li>
+<li>Test agent via Dialogflow CX Console before production</li>
+<li>Build and push webhook container to GCR/Artifact Registry</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Configuration Reference</h2>
+<table>
+<tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>project_id</code></td><td>string</td><td>required</td><td>GCP project ID</td></tr>
+<tr><td><code>region</code></td><td>string</td><td>required</td><td>GCP region (validated)</td></tr>
+<tr><td><code>agent_display_name</code></td><td>string</td><td>required</td><td>Agent display name (1-64 chars)</td></tr>
+<tr><td><code>flows</code></td><td>list(object)</td><td>[Main Flow]</td><td>Conversation flows with pages</td></tr>
+<tr><td><code>intents</code></td><td>list(object)</td><td>[greeting, farewell]</td><td>Intents with training phrases</td></tr>
+<tr><td><code>enable_vertex_ai_features</code></td><td>bool</td><td>false</td><td>Enable Feature Store + Cloud Run</td></tr>
+<tr><td><code>webhook_url</code></td><td>string</td><td>null</td><td>External webhook (or auto Cloud Run)</td></tr>
+<tr><td><code>storage_bucket_name</code></td><td>string</td><td>null</td><td>GCS bucket for agent data</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Deployment</h2>
+<pre>
+# Deploy the agent infrastructure
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+
+# Build and push webhook container (if using Cloud Run)
+gcloud builds submit --tag gcr.io/PROJECT_ID/AGENT_NAME-webhook:latest ./webhook/
+
+# Test the agent
+# Navigate to https://dialogflow.cloud.google.com/cx
+# Select project/region, open agent, use "Test Agent" panel
+</pre>
+</div>
+
+<div class="section">
+<h2>Links</h2>
+<p>
+<a href="https://cloud.google.com/dialogflow/vertex/docs">Vertex AI Agents Documentation</a> |
+<a href="https://cloud.google.com/dialogflow/cx/docs/concept">Dialogflow CX Concepts</a> |
+<a href="https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dialogflow_cx_agent">Terraform Registry</a> |
+<a href="https://github.com/kogunlowo123/terraform-gcp-vertex-ai-agents">GitHub Repository</a>
+</p>
+</div>
+
+</div>
+
+<footer>
+<div class="container">
+<p>terraform-gcp-vertex-ai-agents | Architecture Documentation</p>
+<p style="margin-top:.5rem">Generated from source analysis | Terraform >= 1.5.0 | Google Provider >= 5.10.0</p>
+</div>
+</footer>
+</body>
+</html>
