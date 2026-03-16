@@ -1,14 +1,10 @@
-###############################################################################
-# Project & Region
-###############################################################################
-
 variable "project_id" {
-  description = "GCP project ID"
+  description = "GCP project ID."
   type        = string
 }
 
 variable "region" {
-  description = "GCP region for resource deployment"
+  description = "GCP region for resource deployment."
   type        = string
 
   validation {
@@ -17,12 +13,8 @@ variable "region" {
   }
 }
 
-###############################################################################
-# Agent Configuration
-###############################################################################
-
 variable "agent_display_name" {
-  description = "Display name for the Dialogflow CX agent"
+  description = "Display name for the Dialogflow CX agent."
   type        = string
 
   validation {
@@ -32,7 +24,7 @@ variable "agent_display_name" {
 }
 
 variable "default_language_code" {
-  description = "Default language code for the agent"
+  description = "Default language code for the agent (e.g., en, en-US)."
   type        = string
   default     = "en"
 
@@ -43,41 +35,37 @@ variable "default_language_code" {
 }
 
 variable "time_zone" {
-  description = "Time zone for the agent"
+  description = "Time zone for the agent."
   type        = string
   default     = "America/New_York"
 }
 
 variable "description" {
-  description = "Description of the Dialogflow CX agent"
+  description = "Description of the Dialogflow CX agent."
   type        = string
   default     = "Vertex AI-powered conversational agent"
 }
 
 variable "enable_speech_adaptation" {
-  description = "Enable speech adaptation for improved speech recognition"
+  description = "Enable speech adaptation for improved speech recognition."
   type        = bool
   default     = false
 }
 
 variable "enable_spell_correction" {
-  description = "Enable spell correction for user inputs"
+  description = "Enable spell correction for user inputs."
   type        = bool
   default     = true
 }
 
 variable "supported_languages" {
-  description = "List of additional supported language codes"
+  description = "List of additional supported language codes."
   type        = list(string)
   default     = []
 }
 
-###############################################################################
-# Flows
-###############################################################################
-
 variable "flows" {
-  description = "List of conversation flow configurations"
+  description = "List of conversation flow configurations."
   type = list(object({
     display_name             = string
     description              = string
@@ -126,12 +114,8 @@ variable "flows" {
   ]
 }
 
-###############################################################################
-# Intents
-###############################################################################
-
 variable "intents" {
-  description = "List of intent configurations"
+  description = "List of intent configurations."
   type = list(object({
     display_name     = string
     description      = string
@@ -176,42 +160,26 @@ variable "intents" {
   ]
 }
 
-###############################################################################
-# Webhook
-###############################################################################
-
 variable "webhook_url" {
-  description = "External webhook URL for fulfillment. If null and enable_vertex_ai_features is true, a Cloud Run backend is created."
+  description = "External webhook URL for fulfillment; if null and enable_vertex_ai_features is true, a Cloud Run backend is created."
   type        = string
   default     = null
 }
 
-###############################################################################
-# Vertex AI Features
-###############################################################################
-
 variable "enable_vertex_ai_features" {
-  description = "Enable Vertex AI Feature Store and Cloud Run webhook backend"
+  description = "Enable Vertex AI Feature Store and Cloud Run webhook backend."
   type        = bool
   default     = false
 }
 
-###############################################################################
-# Storage
-###############################################################################
-
 variable "storage_bucket_name" {
-  description = "Name for the GCS bucket to store agent data and training artifacts. Set to null to skip bucket creation."
+  description = "Name for the GCS bucket to store agent data; set to null to skip bucket creation."
   type        = string
   default     = null
 }
 
-###############################################################################
-# Tags / Labels
-###############################################################################
-
-variable "tags" {
-  description = "Labels to apply to GCP resources"
+variable "labels" {
+  description = "Labels to apply to GCP resources."
   type        = map(string)
   default     = {}
 }

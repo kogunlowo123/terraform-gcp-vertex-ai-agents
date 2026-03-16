@@ -1,11 +1,3 @@
-###############################################################################
-# GCP Vertex AI Agent Builder - Conversational AI Agents
-###############################################################################
-
-###############################################################################
-# Enable Required APIs
-###############################################################################
-
 resource "google_project_service" "dialogflow" {
   project = var.project_id
   service = "dialogflow.googleapis.com"
@@ -38,10 +30,6 @@ resource "google_project_service" "storage" {
   disable_on_destroy         = false
 }
 
-###############################################################################
-# Service Account
-###############################################################################
-
 resource "google_service_account" "agent_sa" {
   project      = var.project_id
   account_id   = "${var.agent_display_name}-agent-sa"
@@ -73,10 +61,6 @@ resource "google_project_iam_member" "agent_cloud_run_invoker" {
   member  = "serviceAccount:${google_service_account.agent_sa.email}"
 }
 
-###############################################################################
-# Dialogflow CX Agent
-###############################################################################
-
 resource "google_dialogflow_cx_agent" "agent" {
   display_name          = var.agent_display_name
   location              = var.region
@@ -102,10 +86,6 @@ resource "google_dialogflow_cx_agent" "agent" {
   depends_on = [google_project_service.dialogflow]
 }
 
-###############################################################################
-# Conversation Flows
-###############################################################################
-
 resource "google_dialogflow_cx_flow" "flows" {
   for_each = { for flow in var.flows : flow.display_name => flow }
 
@@ -121,7 +101,7 @@ resource "google_dialogflow_cx_flow" "flows" {
   dynamic "transition_routes" {
     for_each = lookup(each.value, "transition_routes", [])
     content {
-      condition   = transition_routes.value.condition
+      condition = transition_routes.value.condition
       trigger_fulfillment {
         messages {
           text {
@@ -147,12 +127,16 @@ resource "google_dialogflow_cx_flow" "flows" {
   }
 }
 
-###############################################################################
-# Pages within Flows
-###############################################################################
-
 resource "google_dialogflow_cx_page" "pages" {
-  for_each = { for page in local.all_pages : "${page.flow_name}-${page.display_name}" => page }
+  for_each = {
+    for page in flatten([
+      for flow in var.flows : [
+        for page in lookup(flow, "pages", []) : merge(page, {
+          flow_name = flow.display_name
+        })
+      ]
+    ]) : "${page.flow_name}-${page.display_name}" => page
+  }
 
   parent       = google_dialogflow_cx_flow.flows[each.value.flow_name].id
   display_name = each.value.display_name
@@ -190,10 +174,6 @@ resource "google_dialogflow_cx_page" "pages" {
   }
 }
 
-###############################################################################
-# Intents
-###############################################################################
-
 resource "google_dialogflow_cx_intent" "intents" {
   for_each = { for intent in var.intents : intent.display_name => intent }
 
@@ -220,12 +200,14 @@ resource "google_dialogflow_cx_intent" "intents" {
   }
 }
 
-###############################################################################
-# Entity Types
-###############################################################################
-
 resource "google_dialogflow_cx_entity_type" "entity_types" {
-  for_each = { for entity in local.all_entities : entity.display_name => entity }
+  for_each = {
+    for entity in flatten([
+      for intent in var.intents : [
+        for entity in lookup(intent, "entity_types", []) : entity
+      ]
+    ]) : entity.display_name => entity
+  }
 
   parent       = google_dialogflow_cx_agent.agent.id
   display_name = each.value.display_name
@@ -240,10 +222,6 @@ resource "google_dialogflow_cx_entity_type" "entity_types" {
   }
 }
 
-###############################################################################
-# Webhooks
-###############################################################################
-
 resource "google_dialogflow_cx_webhook" "webhook" {
   count = var.webhook_url != null ? 1 : 0
 
@@ -256,10 +234,6 @@ resource "google_dialogflow_cx_webhook" "webhook" {
 
   timeout = "30s"
 }
-
-###############################################################################
-# Cloud Run Webhook Backend
-###############################################################################
 
 resource "google_cloud_run_v2_service" "webhook_backend" {
   count = var.webhook_url == null && var.enable_vertex_ai_features ? 1 : 0
@@ -320,16 +294,12 @@ resource "google_cloud_run_v2_service_iam_member" "webhook_invoker" {
   member   = "serviceAccount:${google_service_account.agent_sa.email}"
 }
 
-###############################################################################
-# Vertex AI Feature Store (Agent Memory / Context)
-###############################################################################
-
 resource "google_vertex_ai_feature_store" "agent_memory" {
   count = var.enable_vertex_ai_features ? 1 : 0
 
-  name     = replace("${var.agent_display_name}_memory", "-", "_")
-  project  = var.project_id
-  region   = var.region
+  name    = replace("${var.agent_display_name}_memory", "-", "_")
+  project = var.project_id
+  region  = var.region
 
   online_serving_config {
     fixed_node_count = 1
@@ -337,14 +307,10 @@ resource "google_vertex_ai_feature_store" "agent_memory" {
 
   force_destroy = true
 
-  labels = var.tags
+  labels = var.labels
 
   depends_on = [google_project_service.vertex_ai]
 }
-
-###############################################################################
-# Storage Bucket (Agent Data / Training)
-###############################################################################
 
 resource "google_storage_bucket" "agent_data" {
   count = var.storage_bucket_name != null ? 1 : 0
@@ -369,7 +335,7 @@ resource "google_storage_bucket" "agent_data" {
     }
   }
 
-  labels = var.tags
+  labels = var.labels
 
   depends_on = [google_project_service.storage]
 }
@@ -380,24 +346,4 @@ resource "google_storage_bucket_iam_member" "agent_data_access" {
   bucket = google_storage_bucket.agent_data[0].name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.agent_sa.email}"
-}
-
-###############################################################################
-# Locals
-###############################################################################
-
-locals {
-  all_pages = flatten([
-    for flow in var.flows : [
-      for page in lookup(flow, "pages", []) : merge(page, {
-        flow_name = flow.display_name
-      })
-    ]
-  ])
-
-  all_entities = flatten([
-    for intent in var.intents : [
-      for entity in lookup(intent, "entity_types", []) : entity
-    ]
-  ])
 }
